@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Royale Cupss | Регистрация</title>
+    <style>
+        body { background: #051622; color: #ffffff; font-family: 'Segoe UI', sans-serif; text-align: center; padding: 20px; }
+        .card { background: #0b1e2b; padding: 40px; border-radius: 20px; border: 2px solid #1ba098; display: inline-block; box-shadow: 0 10px 30px rgba(0,0,0,0.5); min-width: 320px; }
+        h1 { color: #deb992; text-transform: uppercase; margin-bottom: 5px; }
+        .step { display: none; } /* Прячем шаги по умолчанию */
+        .step.active { display: block; } /* Показываем только активный */
+        input { padding: 12px; border-radius: 8px; border: 1px solid #1ba098; background: #051622; color: white; width: 220px; margin: 15px 0; font-size: 16px; }
+        .btn { background: #1ba098; color: #051622; padding: 12px 25px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; margin: 5px; }
+        .btn-confirm { background: #deb992; }
+        .btn-back { background: #444; color: white; }
+        .list-container { margin-top: 30px; text-align: left; max-width: 400px; margin-left: auto; margin-right: auto; border-top: 1px solid #333; padding-top: 20px; }
+        .player-item { background: rgba(255,255,255,0.05); padding: 10px; margin: 5px 0; border-radius: 5px; border-left: 4px solid #1ba098; font-size: 14px; }
+        span.highlight { color: #deb992; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>🏆 Royale Cupss</h1>
+        <p style="color: #1ba098; font-size: 14px; margin-bottom: 20px;">Регистрация на турнир</p>
+        
+        <form id="regForm" action="/register" method="post">
+            <div id="step1" class="step active">
+                <p>Введите ваш ник в игре:</p>
+                <input type="text" id="nickInput" name="nickname" placeholder="Напр: Edik_Pro" required>
+                <br>
+                <button type="button" class="btn" onclick="nextStep(1, 2)">Далее</button>
+            </div>
+
+            <div id="step2" class="step">
+                <p>Вы ввели: <span id="displayNick" class="highlight"></span></p>
+                <p>Нет ошибки?</p>
+                <button type="button" class="btn btn-back" onclick="nextStep(2, 1)">Назад</button>
+                <button type="button" class="btn btn-confirm" onclick="nextStep(2, 3)">Всё верно!</button>
+            </div>
+
+            <div id="step3" class="step">
+                <p>Введите ваш тег игрока (#):</p>
+                <input type="text" id="tagInput" name="tag" placeholder="#P8RRGL..." required>
+                <br>
+                <button type="button" class="btn" onclick="nextStep(3, 4)">Далее</button>
+            </div>
+
+            <div id="step4" class="step">
+                <p>Ваш тег: <span id="displayTag" class="highlight"></span></p>
+                <p>Всё правильно?</p>
+                <button type="button" class="btn btn-back" onclick="nextStep(4, 3)">Назад</button>
+                <button type="submit" class="btn btn-confirm">ОТПРАВИТЬ ЗАЯВКУ</button>
+            </div>
+        </form>
+
+        <div class="list-container">
+            <h3>Участники ({{ players|length }}):</h3>
+            {% for player in players %}
+                <div class="player-item">{{ loop.index }}. {{ player }}</div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <script>
+        function nextStep(current, next) {
+            // Берем значения из инпутов
+            const nick = document.getElementById('nickInput').value;
+            const tag = document.getElementById('tagInput').value;
+
+            // Если идем вперед, проверяем заполнил ли пользователь поле
+            if (next > current) {
+                if (current === 1 && nick.trim() === "") return alert("Введите ник!");
+                if (current === 3 && tag.trim() === "") return alert("Введите тег!");
+            }
+
+            // Обновляем текст в подтверждениях
+            document.getElementById('displayNick').innerText = nick;
+            document.getElementById('displayTag').innerText = tag;
+
+            // Прячем текущий шаг, показываем следующий
+            document.getElementById('step' + current).classList.remove('active');
+            document.getElementById('step' + next).classList.add('active');
+        }
+    </script>
+</body>
+</html>
