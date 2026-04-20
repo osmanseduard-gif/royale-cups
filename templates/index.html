@@ -21,6 +21,17 @@
 </head>
 <body>
     <div class="card">
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+    {% for category, message in messages %}
+      <div style="padding: 10px; margin-bottom: 15px; border-radius: 8px; font-weight: bold; 
+                  background: {% if category == 'success' %}#1ba098{% elif category == 'error' %}#ff4c4c{% else %}#deb992{% endif %}; 
+                  color: #051622;">
+        {{ message }}
+      </div>
+    {% endfor %}
+  {% endif %}
+{% endwith %}
         <h1>🏆 RoyaleCup</h1>
         <p style="color: #1ba098; font-size: 14px; margin-bottom: 20px;">Регистрация на турнир</p>
 
