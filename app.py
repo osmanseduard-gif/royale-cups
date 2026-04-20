@@ -37,20 +37,32 @@ def index():
 def register():
     tag = request.form.get('tag')
     if tag:
-        real_nick = get_real_clash_nick(tag)
+        # Очищаем тег от решетки и пробелов для проверки
+        clean_tag = tag.replace("#", "").strip().upper()
+        real_nick = get_real_clash_nick(clean_tag)
+        
         if real_nick:
-            entry = f"{real_nick} ({tag.strip().upper()})"
+            # Формируем стандартную запись (БЕЗ решетки внутри)
+            entry = f"{real_nick} ({clean_tag})"
+            
+            # Загружаем текущий список для проверки
             all_entries = load_participants()
             
-            if not any(tag.strip().upper() in e for e in all_entries):
+            # Проверяем, нет ли уже такого тега в любой из строк
+            is_duplicate = False
+            for existing_entry in all_entries:
+                if f"({clean_tag})" in existing_entry:
+                    is_duplicate = True
+                    break
+            
+            if not is_duplicate:
                 with open(DATA_FILE, 'a', encoding='utf-8') as f:
                     f.write(entry + '\n')
                 flash("Вы успешно зарегистрированы! ✅", "success")
             else:
-                flash("Этот тег уже есть в списке! ⚠️", "warning")
+                flash("Этот тег уже зарегистрирован! ⚠️", "warning")
         else:
-            # ЕСЛИ ТЕГ НЕ НАЙДЕН
-            flash("Ошибка: Тег не найден! Проверьте правильность. ❌", "error")
+            flash("Ошибка: Тег не найден в Clash Royale! ❌", "error")
     
     return redirect('/')
 
