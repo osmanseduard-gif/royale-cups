@@ -8,8 +8,8 @@
         body { background: #051622; color: #ffffff; font-family: 'Segoe UI', sans-serif; text-align: center; padding: 20px; }
         .card { background: #0b1e2b; padding: 40px; border-radius: 20px; border: 2px solid #1ba098; display: inline-block; box-shadow: 0 10px 30px rgba(0,0,0,0.5); min-width: 320px; }
         h1 { color: #deb992; text-transform: uppercase; margin-bottom: 5px; }
-        .step { display: none; } /* Прячем шаги по умолчанию */
-        .step.active { display: block; } /* Показываем только активный */
+        .step { display: none; }
+        .step.active { display: block; }
         input { padding: 12px; border-radius: 8px; border: 1px solid #1ba098; background: #051622; color: white; width: 220px; margin: 15px 0; font-size: 16px; }
         .btn { background: #1ba098; color: #051622; padding: 12px 25px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; margin: 5px; }
         .btn-confirm { background: #deb992; }
@@ -23,38 +23,24 @@
     <div class="card">
         <h1>🏆 RoyaleCup</h1>
         <p style="color: #1ba098; font-size: 14px; margin-bottom: 20px;">Регистрация на турнир</p>
-<div id="countdown" style="font-size: 24px; color: #deb992; margin-bottom: 20px; font-weight: bold;">
-    До начала: <span id="timer">--:--:--</span>
-</div>
+
+        <div id="countdown" style="font-size: 24px; color: #deb992; margin-bottom: 20px; font-weight: bold;">
+            До начала: <span id="timer">--:--:--</span>
+        </div>
         
         <form id="regForm" action="/register" method="post">
             <div id="step1" class="step active">
-                <p>Введите ваш ник в игре:</p>
-                <input type="text" id="nickInput" name="nickname" placeholder="" required>
+                <p>Введите ваш тег игрока:</p>
+                <input type="text" name="tag" id="tagInput" placeholder="#P982CCUV" required>
                 <br>
                 <button type="button" class="btn" onclick="nextStep(1, 2)">Далее</button>
             </div>
 
             <div id="step2" class="step">
-                <p>Вы ввели: <span id="displayNick" class="highlight"></span></p>
-                <p>Нет ошибки?</p>
-                <button type="button" class="btn btn-back" onclick="nextStep(2, 1)">Назад</button>
-                <button type="button" class="btn btn-confirm" onclick="nextStep(2, 3)">Всё верно!</button>
-            </div>
-
-            <div id="step3" class="step">
-                <p>Введите ваш тег игрока (#):</p>
-                <input type="text" name="tag" id="tagInput" ... >
-
-                <br>
-                <button type="button" class="btn" onclick="nextStep(3, 4)">Далее</button>
-            </div>
-
-            <div id="step4" class="step">
                 <p>Ваш тег: <span id="displayTag" class="highlight"></span></p>
-                <p>Всё правильно?</p>
-                <button type="button" class="btn btn-back" onclick="nextStep(4, 3)">Назад</button>
-                <button type="submit" class="btn btn-confirm">ОТПРАВИТЬ ЗАЯВКУ</button>
+                <p>Система автоматически найдет ваш ник.</p>
+                <button type="button" class="btn btn-back" onclick="nextStep(2, 1)">Назад</button>
+                <button type="submit" class="btn btn-confirm">ЗАРЕГИСТРИРОВАТЬСЯ</button>
             </div>
         </form>
 
@@ -68,64 +54,29 @@
 
     <script>
         function nextStep(current, next) {
-            // Берем значения из инпутов
-            const nick = document.getElementById('nickInput').value;
             const tag = document.getElementById('tagInput').value;
-
-            // Если идем вперед, проверяем заполнил ли пользователь поле
-            if (next > current) {
-                if (current === 1 && nick.trim() === "") return alert("Введите ник!");
-                if (current === 3 && tag.trim() === "") return alert("Введите тег!");
-            }
-
-            // Обновляем текст в подтверждениях
-            document.getElementById('displayNick').innerText = nick;
-            document.getElementById('displayTag').innerText = tag;
-
-            // Прячем текущий шаг, показываем следующий
-            document.getElementById('step' + current).classList.remove('active');
-            document.getElementById('step' + next).classList.add('active');
-        }
-    </script>
-</div> <script>
-        // Функция для переключения шагов (уже была у тебя раньше)
-        function nextStep(current, next) {
-            const nick = document.getElementById('nickInput').value;
-            const tag = document.getElementById('tagInput').value;
-            if (next > current) {
-                if (current === 1 && nick.trim() === "") return alert("Введите ник!");
-                if (current === 3 && tag.trim() === "") return alert("Введите тег!");
-            }
-            document.getElementById('displayNick').innerText = nick;
+            if (next > current && tag.trim() === "") return alert("Введите тег!");
+            
             document.getElementById('displayTag').innerText = tag;
             document.getElementById('step' + current).classList.remove('active');
             document.getElementById('step' + next).classList.add('active');
         }
 
-        // --- НОВЫЙ КОД ТАЙМЕРА ---
+        // Таймер
         const eventTime = new Date(2026, 4, 25, 18, 0, 0).getTime(); 
-
         const timerInterval = setInterval(function() {
             const now = new Date().getTime();
             const diff = eventTime - now;
-
             if (diff <= 0) {
                 clearInterval(timerInterval);
                 document.getElementById("countdown").innerHTML = "ТУРНИР НАЧАЛСЯ! 🔥";
                 return;
             }
-
             const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
             const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
             const seconds = Math.floor((diff % (1000 * 60)) / 1000);
-
-            document.getElementById("timer").innerHTML = 
-                (hours < 10 ? "0" : "") + hours + ":" + 
-                (minutes < 10 ? "0" : "") + minutes + ":" + 
-                (seconds < 10 ? "0" : "") + seconds;
+            document.getElementById("timer").innerHTML = (hours < 10 ? "0" : "") + hours + ":" + (minutes < 10 ? "0" : "") + minutes + ":" + (seconds < 10 ? "0" : "") + seconds;
         }, 1000);
     </script>
-</body>
-</html>
 </body>
 </html>

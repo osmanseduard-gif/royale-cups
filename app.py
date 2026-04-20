@@ -19,12 +19,9 @@ participants = load_participants()
 
 def get_real_clash_nick(tag):
     clean_tag = tag.replace("#", "").strip().upper()
-    if not clean_tag:
-        return None
-    
+    if not clean_tag: return None
     url = f"https://api.clashroyale.com/v1/players/%23{clean_tag}"
     headers = {"Authorization": f"Bearer {ROYALE_API_KEY}"}
-    
     try:
         response = requests.get(url, headers=headers, timeout=10)
         if response.status_code == 200:
@@ -35,7 +32,9 @@ def get_real_clash_nick(tag):
 
 @app.route('/')
 def index():
-    return render_template('index.html', players=participants)
+    # Каждый раз при открытии страницы загружаем список из файла заново
+    current_players = load_participants()
+    return render_template('index.html', players=current_players)
 
 @app.route('/register', methods=['POST'])
 def register():
@@ -44,13 +43,13 @@ def register():
         real_nick = get_real_clash_nick(tag)
         if real_nick:
             entry = f"{real_nick} ({tag.strip().upper()})"
-            if entry not in participants:
-                participants.append(entry)
+            # Проверяем, нет ли уже такого игрока (по тегу)
+            all_entries = load_participants()
+            if not any(tag.strip().upper() in e for e in all_entries):
                 with open(DATA_FILE, 'a', encoding='utf-8') as f:
                     f.write(entry + '\n')
     return redirect('/')
 
 if __name__ == '__main__':
-    # ВНИМАНИЕ: Тут была ошибка в кавычках, теперь всё ок
     port = int(os.environ.get("PORT", 10000))
     app.run(host='0.0.0.0', port=port)
