@@ -18,7 +18,7 @@ def load_participants():
 # Инициализация списков
 participants = load_participants()
 registered_ips = []
-
+print(f"ВНИМАНИЕ! IP моего сервера: {requests.get('https://api.ipify.org').text}")
 def get_real_clash_nick(tag):
     # Очищаем тег: убираем пробелы, решетку и в верхний регистр
     clean_tag = tag.replace("#", "").strip().upper()
