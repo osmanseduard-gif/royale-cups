@@ -18,17 +18,20 @@ def load_participants():
 # Инициализация списков
 participants = load_participants()
 registered_ips = []
-print(f"ВНИМАНИЕ! IP моего сервера: {requests.get('https://api.ipify.org').text}")
+
 def get_real_clash_nick(tag):
-    # Очищаем тег: убираем пробелы, решетку и в верхний регистр
     clean_tag = tag.replace("#", "").strip().upper()
-    if not clean_tag:
-        return None
     
-    # URL с кодированием решетки (%23)
+    # ВОТ ЭТА СТРОЧКА ВАЖНА! Вставь её прямо здесь:
+    try:
+        current_ip = requests.get('https://api.ipify.org').text
+        print(f"--- МОЙ IP СЕЙЧАС: {current_ip} ---")
+    except:
+        print("--- Не удалось узнать свой IP ---")
+
     url = f"https://api.clashroyale.com/v1/players/%23{clean_tag}"
     headers = {"Authorization": f"Bearer {ROYALE_API_KEY}"}
-    
+    # ... дальше остальной код    
     try:
         print(f"--- Проверка тега: {clean_tag} ---")
         response = requests.get(url, headers=headers, timeout=10)
