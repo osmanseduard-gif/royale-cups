@@ -23,6 +23,9 @@
     <div class="card">
         <h1>🏆 Royale Cupss</h1>
         <p style="color: #1ba098; font-size: 14px; margin-bottom: 20px;">Регистрация на турнир</p>
+<div id="countdown" style="font-size: 24px; color: #deb992; margin-bottom: 20px; font-weight: bold;">
+    До начала: <span id="timer">--:--:--</span>
+</div>
         
         <form id="regForm" action="/register" method="post">
             <div id="step1" class="step active">
@@ -83,5 +86,45 @@
             document.getElementById('step' + next).classList.add('active');
         }
     </script>
+</div> <script>
+        // Функция для переключения шагов (уже была у тебя раньше)
+        function nextStep(current, next) {
+            const nick = document.getElementById('nickInput').value;
+            const tag = document.getElementById('tagInput').value;
+            if (next > current) {
+                if (current === 1 && nick.trim() === "") return alert("Введите ник!");
+                if (current === 3 && tag.trim() === "") return alert("Введите тег!");
+            }
+            document.getElementById('displayNick').innerText = nick;
+            document.getElementById('displayTag').innerText = tag;
+            document.getElementById('step' + current).classList.remove('active');
+            document.getElementById('step' + next).classList.add('active');
+        }
+
+        // --- НОВЫЙ КОД ТАЙМЕРА ---
+        const eventTime = new Date(2026, 4, 25, 18, 0, 0).getTime(); 
+
+        const timerInterval = setInterval(function() {
+            const now = new Date().getTime();
+            const diff = eventTime - now;
+
+            if (diff <= 0) {
+                clearInterval(timerInterval);
+                document.getElementById("countdown").innerHTML = "ТУРНИР НАЧАЛСЯ! 🔥";
+                return;
+            }
+
+            const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+            const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+
+            document.getElementById("timer").innerHTML = 
+                (hours < 10 ? "0" : "") + hours + ":" + 
+                (minutes < 10 ? "0" : "") + minutes + ":" + 
+                (seconds < 10 ? "0" : "") + seconds;
+        }, 1000);
+    </script>
+</body>
+</html>
 </body>
 </html>
