@@ -6,8 +6,11 @@ from flask import Flask, render_template, request, redirect, flash, jsonify
 app = Flask(__name__)
 app.secret_key = "super_secret_key_for_royale"
 
-# ВСТАВЬ СЮДА СВОЙ КЛЮЧ С IP 0.0.0.0
-ROYALE_API_KEY = "ТВОЙ_ТОКЕН_ТУТ"
+# ВСТАВЬ СВОЙ КЛЮЧ НИЖЕ. .strip() уберет лишние пробелы и невидимые символы
+RAW_KEY = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzUxMiIsImtpZCI6IjI4YTMxOGY3LTAwMDAtYTFlYi03ZmExLTJjNzQzM2M2Y2NhNSJ9.eyJpc3MiOiJzdXBlcmNlbGwiLCJhdWQiOiJzdXBlcmNlbGw6Z2FtZWFwaSIsImp0aSI6IjlhODhlMTczLWQzOWUtNDJkMS1iNGZhLTg3NmE1OGU3MTAxNCIsImlhdCI6MTc3NjY5NDcxMiwic3ViIjoiZGV2ZWxvcGVyLzQ1ZmQ5MjEwLWNmY2UtZjUzMi00MGFjLTVlMDA4MGJlZmVkZiIsInNjb3BlcyI6WyJyb3lhbGUiXSwibGltaXRzIjpbeyJ0aWVyIjoiZGV2ZWxvcGVyL3NpbHZlciIsInR5cGUiOiJ0aHJvdHRsaW5nIn0seyJjaWRycyI6WyI3NC4yMjAuNTAuMjQwIl0sInR5cGUiOiJjbGllbnQifV19.JD2010w18nx1mCKlMuArlGu0G6rI0YfWL6nMLV3KFlmG8aQS4_3TdekCuuno811S1J7TQIMxcW9wewr1GQLDmQ
+" 
+ROYALE_API_KEY = RAW_KEY.strip()
+
 DATA_FILE = 'players.txt'
 
 verification_sessions = {}
@@ -19,12 +22,20 @@ def load_participants():
     return []
 
 def get_player_data(tag):
+    if "ТВОЙ_ТОКЕН" in ROYALE_API_KEY:
+        print("ОШИБКА: Ты забыл заменить ROYALE_API_KEY на реальный токен!")
+        return None
+
     clean_tag = tag.replace("#", "").strip().upper()
     url = f"https://api.clashroyale.com/v1/players/%23{clean_tag}"
-    headers = {"Authorization": f"Bearer {ROYALE_API_KEY}"}
+    headers = {
+        "Authorization": f"Bearer {ROYALE_API_KEY}",
+        "Accept": "application/json"
+    }
+    
     try:
+        # Теперь запрос максимально защищен от ошибок кодировки
         response = requests.get(url, headers=headers, timeout=10)
-        # Если API выдает ошибку, мы увидим статус в логах Render
         if response.status_code != 200:
             print(f"API Error: Status {response.status_code} for tag {clean_tag}")
             return None
@@ -40,7 +51,6 @@ def index():
 
 @app.route('/start_verification', methods=['POST'])
 def start_verification():
-    # Универсальное получение данных (JSON или Form)
     if request.is_json:
         data = request.get_json()
     else:
@@ -53,7 +63,6 @@ def start_verification():
 
     player_info = get_player_data(tag)
     if not player_info:
-        # Если API не ответило, проверим логи Render!
         return jsonify({"success": False, "message": "Игрок не найден или ошибка API!"})
 
     current_deck = [card['name'] for card in player_info.get('currentDeck', [])]
