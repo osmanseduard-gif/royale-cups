@@ -6,15 +6,12 @@ from flask import Flask, render_template, request, redirect, flash, jsonify
 app = Flask(__name__)
 app.secret_key = "super_secret_key_for_royale"
 
-# Используем ТРОЙНЫЕ кавычки. Это спасет от ошибок при копировании длинных ключей.
-RAW_KEY = """eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzUxMiIsImtpZCI6IjI4YTMxOGY3LTAwMDAtYTFlYi03ZmExLTJjNzQzM2M2Y2NhNSJ9.eyJpc3MiOiJzdXBlcmNlbGwiLCJhdWQiOiJzdXBlcmNlbGw6Z2FtZWFwaSIsImp0aSI6IjAxOGYyMTJjLTliYzktNDFjNS04NGJjLTkwODEzYjc3Mjk1OCIsImlhdCI6MTc3NjgzNzYxNywic3ViIjoiZGV2ZWxvcGVyLzQ1ZmQ5MjEwLWNmY2UtZjUzMi00MGFjLTVlMDA4MGJlZmVkZiIsInNjb3BlcyI6WyJyb3lhbGUiXSwibGltaXRzIjpbeyJ0aWVyIjoiZGV2ZWxvcGVyL3NpbHZlciIsInR5cGUiOiJ0aHJvdHRsaW5nIn0seyJjaWRycyI6WyIwLjAuMC4wIl0sInR5cGUiOiJjbGllbnQifV19.B_t4HoWiqB_NRlFVex4xoeJhPD7I4UPZF0IeSRH5rmCFm5Hg6bj70YY_mbriKkj3n8i1qmwAuHz0GqpYlMgnNQ
-Description"""
+# ВАЖНО: Я убрал лишнее слово "Description". Теперь тут только чистый ключ.
+RAW_KEY = """eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzUxMiIsImtpZCI6IjI4YTMxOGY3LTAwMDAtYTFlYi03ZmExLTJjNzQzM2M2Y2NhNSJ9.eyJpc3MiOiJzdXBlcmNlbGwiLCJhdWQiOiJzdXBlcmNlbGw6Z2FtZWFwaSIsImp0aSI6IjAxOGYyMTJjLTliYzktNDFjNS04NGJjLTkwODEzYjc3Mjk1OCIsImlhdCI6MTc3NjgzNzYxNywic3ViIjoiZGV2ZWxvcGVyLzQ1ZmQ5MjEwLWNmY2UtZjUzMi00MGFjLTVlMDA4MGJlZmVkZiIsInNjb3BlcyI6WyJyb3lhbGUiXSwibGltaXRzIjpbeyJ0aWVyIjoiZGV2ZWxvcGVyL3NpbHZlciIsInR5cGUiOiJ0aHJvdHRsaW5nIn0seyJjaWRycyI6WyIwLjAuMC4wIl0sInR5cGUiOiJjbGllbnQifV19.B_t4HoWiqB_NRlFVex4xoeJhPD7I4UPZF0IeSRH5rmCFm5Hg6bj70YY_mbriKkj3n8i1qmwAuHz0GqpYlMgnNQ"""
 
-# Эта строка удалит все пробелы и переносы, которые могли попасть в ключ
 ROYALE_API_KEY = "".join(RAW_KEY.split()).strip()
 
 DATA_FILE = 'players.txt'
-
 verification_sessions = {}
 
 def load_participants():
@@ -24,6 +21,13 @@ def load_participants():
     return []
 
 def get_player_data(tag):
+    # УЗНАЕМ IP СЕРВЕРА (выводим в логи, чтобы ты мог его скопировать)
+    try:
+        current_ip = requests.get('https://api.ipify.org', timeout=5).text
+        print(f"!!! MY CURRENT RENDER IP: {current_ip} !!!")
+    except:
+        print("Could not check IP")
+
     clean_tag = tag.replace("#", "").strip().upper()
     url = f"https://api.clashroyale.com/v1/players/%23{clean_tag}"
     headers = {
@@ -48,11 +52,7 @@ def index():
 
 @app.route('/start_verification', methods=['POST'])
 def start_verification():
-    if request.is_json:
-        data = request.get_json()
-    else:
-        data = request.form
-    
+    data = request.get_json() if request.is_json else request.form
     tag = data.get('tag', '').replace("#", "").strip().upper()
     
     if not tag:
@@ -78,11 +78,7 @@ def start_verification():
 
 @app.route('/verify_and_register', methods=['POST'])
 def verify_and_register():
-    if request.is_json:
-        data = request.get_json()
-    else:
-        data = request.form
-        
+    data = request.get_json() if request.is_json else request.form
     tag = data.get('tag', '').replace("#", "").strip().upper()
     
     if tag not in verification_sessions:
@@ -106,25 +102,17 @@ def verify_and_register():
             f.write(entry + '\n')
             
         del verification_sessions[tag]
-        return jsonify({"success": True, "message": f"Успех, {real_nick}! Ты в деле. ✅"})
+        return jsonify({"success": True, "message": f"Успех, {real_nick}! ✅"})
     else:
-        return jsonify({"success": False, "message": "Колода не изменилась! Смени карту."})
+        return jsonify({"success": False, "message": "Колода не изменилась!"})
 
 @app.route('/get_access', methods=['POST'])
 def get_access():
-    if request.is_json:
-        data = request.get_json()
-    else:
-        data = request.form
-        
+    data = request.get_json() if request.is_json else request.form
     tag = data.get('tag', '').replace("#", "").strip().upper()
     
     if any(f"({tag})" in p for p in load_participants()):
-        return jsonify({
-            "success": True, 
-            "pass": "1234", 
-            "name": "Royale Cupss #1"
-        })
+        return jsonify({"success": True, "pass": "1234", "name": "Royale Cupss #1"})
     return jsonify({"success": False, "message": "Тебя нет в списке!"})
 
 if __name__ == '__main__':
