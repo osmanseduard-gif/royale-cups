@@ -6,10 +6,11 @@ from flask import Flask, render_template, request, redirect, flash, jsonify
 app = Flask(__name__)
 app.secret_key = "super_secret_key_for_royale"
 
-# ВСТАВЬ СВОЙ КЛЮЧ НИЖЕ. .strip() уберет лишние пробелы и невидимые символы
-RAW_KEY = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzUxMiIsImtpZCI6IjI4YTMxOGY3LTAwMDAtYTFlYi03ZmExLTJjNzQzM2M2Y2NhNSJ9.eyJpc3MiOiJzdXBlcmNlbGwiLCJhdWQiOiJzdXBlcmNlbGw6Z2FtZWFwaSIsImp0aSI6IjlhODhlMTczLWQzOWUtNDJkMS1iNGZhLTg3NmE1OGU3MTAxNCIsImlhdCI6MTc3NjY5NDcxMiwic3ViIjoiZGV2ZWxvcGVyLzQ1ZmQ5MjEwLWNmY2UtZjUzMi00MGFjLTVlMDA4MGJlZmVkZiIsInNjb3BlcyI6WyJyb3lhbGUiXSwibGltaXRzIjpbeyJ0aWVyIjoiZGV2ZWxvcGVyL3NpbHZlciIsInR5cGUiOiJ0aHJvdHRsaW5nIn0seyJjaWRycyI6WyI3NC4yMjAuNTAuMjQwIl0sInR5cGUiOiJjbGllbnQifV19.JD2010w18nx1mCKlMuArlGu0G6rI0YfWL6nMLV3KFlmG8aQS4_3TdekCuuno811S1J7TQIMxcW9wewr1GQLDmQ
-" 
-ROYALE_API_KEY = RAW_KEY.strip()
+# Используем ТРОЙНЫЕ кавычки. Это спасет от ошибок при копировании длинных ключей.
+RAW_KEY = """eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzUxMiIsImtpZCI6IjI4YTMxOGY3LTAwMDAtYTFlYi03ZmExLTJjNzQzM2M2Y2NhNSJ9.eyJpc3MiOiJzdXBlcmNlbGwiLCJhdWQiOiJzdXBlcmNlbGw6Z2FtZWFwaSIsImp0aSI6IjlhODhlMTczLWQzOWUtNDJkMS1iNGZhLTg3NmE1OGU3MTAxNCIsImlhdCI6MTc3NjY5NDcxMiwic3ViIjoiZGV2ZWxvcGVyLzQ1ZmQ5MjEwLWNmY2UtZjUzMi00MGFjLTVlMDA4MGJlZmVkZiIsInNjb3BlcyI6WyJyb3lhbGUiXSwibGltaXRzIjpbeyJ0aWVyIjoiZGV2ZWxvcGVyL3NpbHZlciIsInR5cGUiOiJ0aHJvdHRsaW5nIn0seyJjaWRycyI6WyI3NC4yMjAuNTAuMjQwIl0sInR5cGUiOiJjbGllbnQifV19.JD2010w18nx1mCKlMuArlGu0G6rI0YfWL6nMLV3KFlmG8aQS4_3TdekCuuno811S1J7TQIMxcW9wewr1GQLDmQ"""
+
+# Эта строка удалит все пробелы и переносы, которые могли попасть в ключ
+ROYALE_API_KEY = "".join(RAW_KEY.split()).strip()
 
 DATA_FILE = 'players.txt'
 
@@ -22,10 +23,6 @@ def load_participants():
     return []
 
 def get_player_data(tag):
-    if "ТВОЙ_ТОКЕН" in ROYALE_API_KEY:
-        print("ОШИБКА: Ты забыл заменить ROYALE_API_KEY на реальный токен!")
-        return None
-
     clean_tag = tag.replace("#", "").strip().upper()
     url = f"https://api.clashroyale.com/v1/players/%23{clean_tag}"
     headers = {
@@ -34,7 +31,6 @@ def get_player_data(tag):
     }
     
     try:
-        # Теперь запрос максимально защищен от ошибок кодировки
         response = requests.get(url, headers=headers, timeout=10)
         if response.status_code != 200:
             print(f"API Error: Status {response.status_code} for tag {clean_tag}")
