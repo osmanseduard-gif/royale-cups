@@ -6,11 +6,10 @@ from flask import Flask, render_template, request, redirect, flash, jsonify
 app = Flask(__name__)
 app.secret_key = "super_secret_key_for_royale"
 
-# ОБЯЗАТЕЛЬНО замени этот ключ на новый с IP 0.0.0.0 в Supercell Portal!
-ROYALE_API_KEY = "ТВОЙ_НОВЫЙ_КЛЮЧ_ТУТ"
+# ВСТАВЬ СЮДА СВОЙ КЛЮЧ С IP 0.0.0.0
+ROYALE_API_KEY = "ТВОЙ_ТОКЕН_ТУТ"
 DATA_FILE = 'players.txt'
 
-# Временная база для проверки (в памяти сервера)
 verification_sessions = {}
 
 def load_participants():
@@ -25,10 +24,13 @@ def get_player_data(tag):
     headers = {"Authorization": f"Bearer {ROYALE_API_KEY}"}
     try:
         response = requests.get(url, headers=headers, timeout=10)
-        if response.status_code == 200:
-            return response.json()
-        return None
-    except:
+        # Если API выдает ошибку, мы увидим статус в логах Render
+        if response.status_code != 200:
+            print(f"API Error: Status {response.status_code} for tag {clean_tag}")
+            return None
+        return response.json()
+    except Exception as e:
+        print(f"Connection Error: {e}")
         return None
 
 @app.route('/')
@@ -36,10 +38,14 @@ def index():
     current_players = load_participants()
     return render_template('index.html', players=current_players)
 
-# ШАГ 1: Начало верификации
 @app.route('/start_verification', methods=['POST'])
 def start_verification():
-    data = request.get_json()
+    # Универсальное получение данных (JSON или Form)
+    if request.is_json:
+        data = request.get_json()
+    else:
+        data = request.form
+    
     tag = data.get('tag', '').replace("#", "").strip().upper()
     
     if not tag:
@@ -47,9 +53,9 @@ def start_verification():
 
     player_info = get_player_data(tag)
     if not player_info:
-        return jsonify({"success": False, "message": "Игрок не найден!"})
+        # Если API не ответило, проверим логи Render!
+        return jsonify({"success": False, "message": "Игрок не найден или ошибка API!"})
 
-    # Сохраняем текущий состав колоды (список названий карт)
     current_deck = [card['name'] for card in player_info.get('currentDeck', [])]
     
     verification_sessions[tag] = {
@@ -64,10 +70,13 @@ def start_verification():
         "tag": tag
     })
 
-# ШАГ 2: Финальная проверка
 @app.route('/verify_and_register', methods=['POST'])
 def verify_and_register():
-    data = request.get_json()
+    if request.is_json:
+        data = request.get_json()
+    else:
+        data = request.form
+        
     tag = data.get('tag', '').replace("#", "").strip().upper()
     
     if tag not in verification_sessions:
@@ -75,17 +84,15 @@ def verify_and_register():
 
     player_info = get_player_data(tag)
     if not player_info:
-        return jsonify({"success": False, "message": "Ошибка связи с API."})
+        return jsonify({"success": False, "message": "Ошибка связи с игрой."})
 
     new_deck = [card['name'] for card in player_info.get('currentDeck', [])]
     old_deck = verification_sessions[tag]['old_deck']
 
-    # Если состав карт изменился — значит это владелец!
     if set(new_deck) != set(old_deck):
         real_nick = verification_sessions[tag]['name']
         entry = f"{real_nick} ({tag})"
         
-        # Проверка на дубликат в файле
         if any(f"({tag})" in p for p in load_participants()):
              return jsonify({"success": False, "message": "Ты уже в списке!"})
 
@@ -93,14 +100,17 @@ def verify_and_register():
             f.write(entry + '\n')
             
         del verification_sessions[tag]
-        return jsonify({"success": True, "message": f"Успех, {real_nick}! Ты зарегистрирован. ✅"})
+        return jsonify({"success": True, "message": f"Успех, {real_nick}! Ты в деле. ✅"})
     else:
-        return jsonify({"success": False, "message": "Колода не изменилась! Смени карту в игре и нажми еще раз."})
+        return jsonify({"success": False, "message": "Колода не изменилась! Смени карту."})
 
-# Для выдачи пароля только участникам после старта
 @app.route('/get_access', methods=['POST'])
 def get_access():
-    data = request.get_json()
+    if request.is_json:
+        data = request.get_json()
+    else:
+        data = request.form
+        
     tag = data.get('tag', '').replace("#", "").strip().upper()
     
     if any(f"({tag})" in p for p in load_participants()):
@@ -109,7 +119,7 @@ def get_access():
             "pass": "1234", 
             "name": "Royale Cupss #1"
         })
-    return jsonify({"success": False, "message": "Тебя нет в списке участников!"})
+    return jsonify({"success": False, "message": "Тебя нет в списке!"})
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 10000))
