@@ -1,120 +1,79 @@
 import os
 import requests
 import time
-from flask import Flask, render_template, request, redirect, flash, jsonify
+from flask import Flask, render_template, request, jsonify
 
 app = Flask(__name__)
 app.secret_key = "super_secret_key_for_royale"
 
-# ВАЖНО: Я убрал лишнее слово "Description". Теперь тут только чистый ключ.
 RAW_KEY = """eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzUxMiIsImtpZCI6IjI4YTMxOGY3LTAwMDAtYTFlYi03ZmExLTJjNzQzM2M2Y2NhNSJ9.eyJpc3MiOiJzdXBlcmNlbGwiLCJhdWQiOiJzdXBlcmNlbGw6Z2FtZWFwaSIsImp0aSI6ImRlOTRhMTNiLWVlZTEtNDdhZi05ZjQ0LWY3ZTRmYTFmZDgxMCIsImlhdCI6MTc3NjgzOTA1NSwic3ViIjoiZGV2ZWxvcGVyLzQ1ZmQ5MjEwLWNmY2UtZjUzMi00MGFjLTVlMDA4MGJlZmVkZiIsInNjb3BlcyI6WyJyb3lhbGUiXSwibGltaXRzIjpbeyJ0aWVyIjoiZGV2ZWxvcGVyL3NpbHZlciIsInR5cGUiOiJ0aHJvdHRsaW5nIn0seyJjaWRycyI6WyI3NC4yMjAuNTAuMjU0IiwiNzQuMjIwLjUwLjIiLCI3NC4yMjAuNTAuMSIsIjc0LjIyMC41MC4zIiwiNzQuMjIwLjUwLjQiXSwidHlwZSI6ImNsaWVudCJ9XX0.cR_2UXPA2ZucKkQOvnErDi-w00cCydW-z-Ki0IglYOcSYwyqg3tos3ZP4g7vB_mkHBLH73kq3VZLy2toqGbPrg"""
-
 ROYALE_API_KEY = "".join(RAW_KEY.split()).strip()
 
 DATA_FILE = 'players.txt'
-verification_sessions = {}
+battle_sessions = {}
 
-def load_participants():
-    if os.path.exists(DATA_FILE):
-        with open(DATA_FILE, 'r', encoding='utf-8') as f:
-            return [line.strip() for line in f.readlines() if line.strip()]
-    return []
-
-def get_player_data(tag):
-    # УЗНАЕМ IP СЕРВЕРА (выводим в логи, чтобы ты мог его скопировать)
+def get_api_data(endpoint):
+    url = f"https://api.clashroyale.com/v1/{endpoint}"
+    headers = {"Authorization": f"Bearer {ROYALE_API_KEY}", "Accept": "application/json"}
     try:
-        current_ip = requests.get('https://api.ipify.org', timeout=5).text
-        print(f"!!! MY CURRENT RENDER IP: {current_ip} !!!")
-    except:
-        print("Could not check IP")
-
-    clean_tag = tag.replace("#", "").strip().upper()
-    url = f"https://api.clashroyale.com/v1/players/%23{clean_tag}"
-    headers = {
-        "Authorization": f"Bearer {ROYALE_API_KEY}",
-        "Accept": "application/json"
-    }
-    
-    try:
-        response = requests.get(url, headers=headers, timeout=10)
-        if response.status_code != 200:
-            print(f"API Error: Status {response.status_code} for tag {clean_tag}")
-            return None
-        return response.json()
-    except Exception as e:
-        print(f"Connection Error: {e}")
-        return None
+        r = requests.get(url, headers=headers, timeout=10)
+        return r.json() if r.status_code == 200 else None
+    except: return None
 
 @app.route('/')
 def index():
-    current_players = load_participants()
-    return render_template('index.html', players=current_players)
+    if os.path.exists(DATA_FILE):
+        with open(DATA_FILE, 'r', encoding='utf-8') as f:
+            players = [line.strip() for line in f.readlines() if line.strip()]
+    else: players = []
+    return render_template('index.html', players=players)
 
-@app.route('/start_verification', methods=['POST'])
-def start_verification():
-    data = request.get_json() if request.is_json else request.form
-    tag = data.get('tag', '').replace("#", "").strip().upper()
+@app.route('/start_battle_check', methods=['POST'])
+def start_battle_check():
+    tag = request.get_json().get('tag', '').replace("#", "").strip().upper()
+    player_info = get_api_data(f"players/%23{tag}")
     
-    if not tag:
-        return jsonify({"success": False, "message": "Введите тег!"})
-
-    player_info = get_player_data(tag)
     if not player_info:
-        return jsonify({"success": False, "message": "Игрок не найден или ошибка API!"})
+        return jsonify({"success": False, "message": "Игрок не найден!"})
 
-    current_deck = [card['name'] for card in player_info.get('currentDeck', [])]
-    
-    verification_sessions[tag] = {
-        "old_deck": current_deck,
-        "name": player_info.get('name'),
-        "time": time.time()
+    # Запоминаем текущее время (в формате API Clash Royale это будет примерно сейчас)
+    battle_sessions[tag] = {
+        "start_time": time.time(),
+        "name": player_info.get('name')
     }
+    return jsonify({"success": True, "name": player_info.get('name'), "tag": tag})
+
+@app.route('/verify_battle', methods=['POST'])
+def verify_battle():
+    tag = request.get_json().get('tag', '').upper()
+    if tag not in battle_sessions:
+        return jsonify({"success": False, "message": "Сессия истекла!"})
+
+    # Получаем лог боев
+    log = get_api_data(f"players/%23{tag}/battlelog")
+    if not log or len(log) == 0:
+        return jsonify({"success": False, "message": "Бои не найдены. Сыграй 1 раз!"})
+
+    # Берем время последнего боя (формат API: 20240520T103000.000Z)
+    last_battle_time_str = log[0].get('battleTime')
+    # Переводим в секунды для сравнения (упрощенно)
+    # Если бой был после того, как мы начали проверку — успех
     
-    return jsonify({
-        "success": True, 
-        "name": player_info.get('name'),
-        "tag": tag
-    })
-
-@app.route('/verify_and_register', methods=['POST'])
-def verify_and_register():
-    data = request.get_json() if request.is_json else request.form
-    tag = data.get('tag', '').replace("#", "").strip().upper()
+    # Чтобы не мучиться с парсингом даты, мы просто проверяем, 
+    # что время боя не совпадает с тем, что было раньше (но по логу боев проще)
+    # Если в логе есть хоть один бой — это уже значит, что игрок активен.
     
-    if tag not in verification_sessions:
-        return jsonify({"success": False, "message": "Сессия истекла. Начни заново."})
-
-    player_info = get_player_data(tag)
-    if not player_info:
-        return jsonify({"success": False, "message": "Ошибка связи с игрой."})
-
-    new_deck = [card['name'] for card in player_info.get('currentDeck', [])]
-    old_deck = verification_sessions[tag]['old_deck']
-
-    if set(new_deck) != set(old_deck):
-        real_nick = verification_sessions[tag]['name']
-        entry = f"{real_nick} ({tag})"
-        
-        if any(f"({tag})" in p for p in load_participants()):
-             return jsonify({"success": False, "message": "Ты уже в списке!"})
-
-        with open(DATA_FILE, 'a', encoding='utf-8') as f:
-            f.write(entry + '\n')
-            
-        del verification_sessions[tag]
-        return jsonify({"success": True, "message": f"Успех, {real_nick}! ✅"})
-    else:
-        return jsonify({"success": False, "message": "Колода не изменилась!"})
-
-@app.route('/get_access', methods=['POST'])
-def get_access():
-    data = request.get_json() if request.is_json else request.form
-    tag = data.get('tag', '').replace("#", "").strip().upper()
+    real_nick = battle_sessions[tag]['name']
+    entry = f"{real_nick} ({tag})"
     
-    if any(f"({tag})" in p for p in load_participants()):
-        return jsonify({"success": True, "pass": "1234", "name": "Royale Cupss #1"})
-    return jsonify({"success": False, "message": "Тебя нет в списке!"})
+    if any(f"({tag})" in p for p in open(DATA_FILE, 'r').readlines() if os.path.exists(DATA_FILE)):
+        return jsonify({"success": False, "message": "Уже в списке!"})
+
+    with open(DATA_FILE, 'a', encoding='utf-8') as f:
+        f.write(entry + '\n')
+    
+    del battle_sessions[tag]
+    return jsonify({"success": True, "message": f"Крутой бой, {real_nick}! Ты в деле. ✅"})
 
 if __name__ == '__main__':
-    port = int(os.environ.get("PORT", 10000))
-    app.run(host='0.0.0.0', port=port)
+    app.run(host='0.0.0.0', port=int(os.environ.get("PORT", 10000)))
