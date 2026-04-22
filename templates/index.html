@@ -6,56 +6,57 @@
     <title>Royale Cupss | Регистрация</title>
     <style>
         body { background: #051622; color: #ffffff; font-family: 'Segoe UI', sans-serif; text-align: center; padding: 20px; }
-        .card { background: #0b1e2b; padding: 40px; border-radius: 20px; border: 2px solid #1ba098; display: inline-block; box-shadow: 0 10px 30px rgba(0,0,0,0.5); min-width: 320px; }
+        .card { background: #0b1e2b; padding: 40px; border-radius: 20px; border: 2px solid #1ba098; display: inline-block; box-shadow: 0 10px 30px rgba(0,0,0,0.5); min-width: 320px; max-width: 450px; }
         h1 { color: #deb992; text-transform: uppercase; margin-bottom: 5px; }
         .step { display: none; }
         .step.active { display: block; }
-        input { padding: 12px; border-radius: 8px; border: 1px solid #1ba098; background: #051622; color: white; width: 220px; margin: 15px 0; font-size: 16px; }
-        .btn { background: #1ba098; color: #051622; padding: 12px 25px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; margin: 5px; }
+        input { padding: 12px; border-radius: 8px; border: 1px solid #1ba098; background: #051622; color: white; width: 80%; margin: 15px 0; font-size: 16px; text-align: center; }
+        .btn { background: #1ba098; color: #051622; padding: 12px 25px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; margin: 10px 5px; transition: 0.3s; }
+        .btn:hover { opacity: 0.8; transform: translateY(-2px); }
         .btn-confirm { background: #deb992; }
         .btn-back { background: #444; color: white; }
         .list-container { margin-top: 30px; text-align: left; max-width: 400px; margin-left: auto; margin-right: auto; border-top: 1px solid #333; padding-top: 20px; }
         .player-item { background: rgba(255,255,255,0.05); padding: 10px; margin: 5px 0; border-radius: 5px; border-left: 4px solid #1ba098; font-size: 14px; }
         span.highlight { color: #deb992; font-weight: bold; }
+        #status-msg { margin: 15px 0; padding: 10px; border-radius: 8px; display: none; font-weight: bold; }
+        @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
     </style>
 </head>
 <body>
     <div class="card">
-{% with messages = get_flashed_messages(with_categories=true) %}
-  {% if messages %}
-    {% for category, message in messages %}
-      <div style="padding: 10px; margin-bottom: 15px; border-radius: 8px; font-weight: bold; 
-                  background: {% if category == 'success' %}#1ba098{% elif category == 'error' %}#ff4c4c{% else %}#deb992{% endif %}; 
-                  color: #051622;">
-        {{ message }}
-      </div>
-    {% endfor %}
-  {% endif %}
-{% endwith %}
         <h1>🏆 RoyaleCup</h1>
-        <p style="color: #1ba098; font-size: 14px; margin-bottom: 20px;">Регистрация на турнир</p>
+        <p style="color: #1ba098; font-size: 14px; margin-bottom: 20px;">Официальная регистрация</p>
 
-        <div id="countdown" style="font-size: 24px; color: #deb992; margin-bottom: 20px; font-weight: bold;">
-            До начала: <span id="timer">--:--:--</span>
+        <div id="event-box">
+            <div id="countdown" style="font-size: 24px; color: #deb992; margin-bottom: 20px; font-weight: bold;">
+                До начала: <span id="timer">--:--:--</span>
+            </div>
         </div>
+
+        <div id="status-msg"></div>
         
-        <form id="regForm" action="/register" method="post">
+        <div id="main-content">
             <div id="step1" class="step active">
                 <p>Введите ваш тег игрока:</p>
-                <input type="text" name="tag" id="tagInput" placeholder="#P982CCUV" required>
+                <input type="text" id="tagInput" placeholder="#P982CCUV">
                 <br>
-                <button type="button" class="btn" onclick="nextStep(1, 2)">Далее</button>
+                <button type="button" class="btn" onclick="startVerification()">ДАЛЕЕ</button>
             </div>
 
             <div id="step2" class="step">
-                <p>Ваш тег: <span id="displayTag" class="highlight"></span></p>
-                <p>Система автоматически найдет ваш ник.</p>
-                <button type="button" class="btn btn-back" onclick="nextStep(2, 1)">Назад</button>
-                <button type="submit" class="btn btn-confirm">ЗАРЕГИСТРИРОВАТЬСЯ</button>
+                <p>Привет, <span id="displayNick" class="highlight"></span>!</p>
+                <p style="font-size: 14px; border: 1px dashed #deb992; padding: 10px; border-radius: 10px;">
+                    Чтобы подтвердить, что это ты:<br>
+                    1. Зайди в Clash Royale<br>
+                    2. <b>Замени любую карту</b> в своей активной колоде<br>
+                    3. Нажми кнопку ниже
+                </p>
+                <button type="button" class="btn btn-back" onclick="goToStep(1)">НАЗАД</button>
+                <button type="button" class="btn btn-confirm" onclick="verifyAndRegister()">Я ИЗМЕНИЛ КОЛОДУ</button>
             </div>
-        </form>
+        </div>
 
-        <div class="list-container">
+        <div class="list-container" id="participants-list">
             <h3>Участники ({{ players|length }}):</h3>
             {% for player in players %}
                 <div class="player-item">{{ loop.index }}. {{ player }}</div>
@@ -64,30 +65,111 @@
     </div>
 
     <script>
-        function nextStep(current, next) {
-            const tag = document.getElementById('tagInput').value;
-            if (next > current && tag.trim() === "") return alert("Введите тег!");
-            
-            document.getElementById('displayTag').innerText = tag;
-            document.getElementById('step' + current).classList.remove('active');
-            document.getElementById('step' + next).classList.add('active');
+        let currentTag = "";
+
+        function showMessage(text, type) {
+            const msg = document.getElementById('status-msg');
+            msg.innerText = text;
+            msg.style.display = 'block';
+            msg.style.background = type === 'success' ? '#1ba098' : '#ff4c4c';
+            msg.style.color = '#051622';
+            setTimeout(() => { msg.style.display = 'none'; }, 5000);
         }
 
-        // Таймер
+        function goToStep(num) {
+            document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
+            document.getElementById('step' + num).classList.add('active');
+        }
+
+        // 1. Начинаем проверку (делаем "слепок" колоды)
+        async function startVerification() {
+            const tag = document.getElementById('tagInput').value.trim();
+            if (!tag) return alert("Введите тег!");
+
+            const res = await fetch('/start_verification', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ tag: tag })
+            });
+            const data = await res.json();
+
+            if (data.success) {
+                currentTag = data.tag;
+                document.getElementById('displayNick').innerText = data.name;
+                localStorage.setItem('myRoyaleTag', data.tag);
+                goToStep(2);
+            } else {
+                showMessage(data.message, 'error');
+            }
+        }
+
+        // 2. Проверяем изменения
+        async function verifyAndRegister() {
+            const res = await fetch('/verify_and_register', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ tag: currentTag })
+            });
+            const data = await res.json();
+
+            if (data.success) {
+                showMessage(data.message, 'success');
+                setTimeout(() => location.reload(), 2000); // Перезагружаем, чтобы обновить список
+            } else {
+                showMessage(data.message, 'error');
+            }
+        }
+
+        // ТАЙМЕР И ФИНАЛ
         const eventTime = new Date(2026, 4, 25, 18, 0, 0).getTime(); 
         const timerInterval = setInterval(function() {
             const now = new Date().getTime();
             const diff = eventTime - now;
+
             if (diff <= 0) {
                 clearInterval(timerInterval);
-                document.getElementById("countdown").innerHTML = "ТУРНИР НАЧАЛСЯ! 🔥";
+                handleEventStart();
                 return;
             }
+
             const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
             const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
             const seconds = Math.floor((diff % (1000 * 60)) / 1000);
             document.getElementById("timer").innerHTML = (hours < 10 ? "0" : "") + hours + ":" + (minutes < 10 ? "0" : "") + minutes + ":" + (seconds < 10 ? "0" : "") + seconds;
         }, 1000);
+
+        async function handleEventStart() {
+            document.getElementById("main-content").style.display = "none";
+            document.getElementById("participants-list").style.display = "none";
+            
+            const myTag = localStorage.getItem('myRoyaleTag');
+            const eventBox = document.getElementById("event-box");
+
+            if (!myTag) {
+                document.getElementById("countdown").innerHTML = "<h2 style='color: #ff4c4c;'>РЕГИСТРАЦИЯ ЗАКРЫТА ❌</h2><p>Вы не успели записаться.</p>";
+                return;
+            }
+
+            const res = await fetch('/get_access', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ tag: myTag })
+            });
+            const data = await res.json();
+
+            if (data.success) {
+                document.getElementById("countdown").innerHTML = "<h2 style='color: #1ba098; animation: blink 1s infinite;'>ТУРНИР НАЧАЛСЯ! 🔥</h2>";
+                eventBox.innerHTML += `
+                    <div style="background: rgba(27, 160, 152, 0.1); padding: 20px; border-radius: 15px; border: 2px solid #1ba098; margin-top: 20px;">
+                        <p>Название: <span class="highlight">${data.name}</span></p>
+                        <p>Пароль: <span class="highlight" style="font-size: 24px;">${data.pass}</span></p>
+                        <br>
+                        <a href="clashroyale://searchTournament?name=${data.name}" class="btn btn-confirm" style="text-decoration:none; display:inline-block;">ВХОД В ИГРУ</a>
+                    </div>`;
+            } else {
+                document.getElementById("countdown").innerHTML = "<h2 style='color: #ff4c4c;'>ДОСТУП ОТКЛОНЕН ❌</h2><p>" + data.message + "</p>";
+            }
+        }
     </script>
 </body>
 </html>
