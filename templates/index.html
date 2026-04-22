@@ -13,6 +13,8 @@
         input { padding: 12px; border-radius: 8px; border: 1px solid #1ba098; background: #051622; color: white; width: 80%; margin: 15px 0; font-size: 16px; text-align: center; }
         .btn { background: #1ba098; color: #051622; padding: 12px 25px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; margin: 10px 5px; transition: 0.3s; }
         .btn:hover { opacity: 0.8; transform: translateY(-2px); }
+        /* Стиль для заблокированной кнопки */
+        .btn:disabled { background: #444 !important; color: #888; cursor: not-allowed; transform: none; }
         .btn-confirm { background: #deb992; }
         .btn-back { background: #444; color: white; }
         .list-container { margin-top: 30px; text-align: left; max-width: 400px; margin-left: auto; margin-right: auto; border-top: 1px solid #333; padding-top: 20px; }
@@ -48,11 +50,11 @@
                 <p style="font-size: 14px; border: 1px dashed #deb992; padding: 10px; border-radius: 10px;">
                     Чтобы подтвердить, что это ты:<br>
                     1. Зайди в Clash Royale<br>
-                    2. <b>Замени любую карту</b> в своей активной колоде<br>
-                    3. Нажми кнопку ниже
+                    2. <b>Замени любую карту</b> в активной колоде<br>
+                    3. Вернись сюда и нажми кнопку ниже
                 </p>
                 <button type="button" class="btn btn-back" onclick="goToStep(1)">НАЗАД</button>
-                <button type="button" class="btn btn-confirm" onclick="verifyAndRegister()">Я ИЗМЕНИЛ КОЛОДУ</button>
+                <button type="button" id="verifyBtn" class="btn btn-confirm" onclick="verifyAndRegister()">Я ИЗМЕНИЛ КОЛОДУ</button>
             </div>
         </div>
 
@@ -81,9 +83,9 @@
             document.getElementById('step' + num).classList.add('active');
         }
 
-        // 1. Начинаем проверку (делаем "слепок" колоды)
         async function startVerification() {
-            const tag = document.getElementById('tagInput').value.trim();
+            const tagInput = document.getElementById('tagInput');
+            const tag = tagInput.value.trim();
             if (!tag) return alert("Введите тег!");
 
             const res = await fetch('/start_verification', {
@@ -103,24 +105,47 @@
             }
         }
 
-        // 2. Проверяем изменения
+        // ОБНОВЛЕННАЯ ФУНКЦИЯ С ТАЙМЕРОМ 8 СЕКУНД
         async function verifyAndRegister() {
-            const res = await fetch('/verify_and_register', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ tag: currentTag })
-            });
-            const data = await res.json();
+            const btn = document.getElementById('verifyBtn');
+            const originalText = "Я ИЗМЕНИЛ КОЛОДУ";
+            let secondsLeft = 8;
+            
+            btn.disabled = true;
+            
+            // Запускаем визуальный отсчет на кнопке
+            const timerId = setInterval(() => {
+                btn.innerText = `ПРОВЕРЯЮ... ${secondsLeft}с ⏳`;
+                secondsLeft--;
+                if (secondsLeft < 0) clearInterval(timerId);
+            }, 1000);
 
-            if (data.success) {
-                showMessage(data.message, 'success');
-                setTimeout(() => location.reload(), 2000); // Перезагружаем, чтобы обновить список
-            } else {
-                showMessage(data.message, 'error');
+            // Ждем 8 секунд перед отправкой запроса на сервер
+            await new Promise(resolve => setTimeout(resolve, 8000));
+
+            try {
+                const res = await fetch('/verify_and_register', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ tag: currentTag })
+                });
+                const data = await res.json();
+
+                if (data.success) {
+                    showMessage(data.message, 'success');
+                    setTimeout(() => location.reload(), 1500);
+                } else {
+                    showMessage(data.message, 'error');
+                    btn.disabled = false;
+                    btn.innerText = "ПОПРОБОВАТЬ СНОВА";
+                }
+            } catch (e) {
+                showMessage("Ошибка сети. Попробуй еще раз.", 'error');
+                btn.disabled = false;
+                btn.innerText = originalText;
             }
         }
 
-        // ТАЙМЕР И ФИНАЛ
         const eventTime = new Date(2026, 4, 25, 18, 0, 0).getTime(); 
         const timerInterval = setInterval(function() {
             const now = new Date().getTime();
